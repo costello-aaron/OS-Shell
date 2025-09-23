@@ -4,7 +4,7 @@ CS 3733 – Project 1: Implementing a Shell
 Group Members:
 - Aaron Costello
 - Alexis Obeng
-- Steve
+- Steve Rodriguez
 
 -------------------------------------------
 Files Included:
@@ -17,15 +17,15 @@ Files Included:
 How to Compile:
 -------------------------------------------
 Run:
-    make
+    `make`
 
-This will create an executable named "shell".
+This will create an executable named "`shell`".
 
 -------------------------------------------
 How to Run:
 -------------------------------------------
 Run:
-    ./shell
+    `./shell`
 
 
 
@@ -37,4 +37,5 @@ Challenges Encountered:
 -------------------------------------------
 Sources / References:
 -------------------------------------------
+- Lecture slides
 
