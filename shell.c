@@ -6,116 +6,96 @@
 
 #define MAX_ARGS 10
 #define MAX_LEN 1000
-#define PID_HISTORY 5
 
-// Track last 5 child PIDs
-pid_t idList[PID_HISTORY];
-int pidIndex = 0;
+pid_t idList[5];
+int idIndex = 0;
 
-// Change directory
-void chgDir(char *path, char *currDir) {
-    if (chdir(path) == -1) {
+void chgDir(char *p, char *d) {
+    if (chdir(p) == -1) {
         printf("Error: cannot change directory\n");
         return;
     }
-    if (getcwd(currDir, 1000) == NULL) {
+    if (getcwd(d, 1000) == NULL) {
         perror("getcwd error");
     }
-    setenv("PWD", currDir, 1);
+    setenv("PWD", d, 1);
 }
 
-// Show last 5 child PIDs
-void showpid(pid_t idList[]) {
-    for (int i = 0; i < PID_HISTORY; i++) {
-        if (idList[i] != 0) {
-            printf("%d\n", idList[i]);
+void showpid(pid_t ids[]) {
+    for (int i = 0; i < 5; i++) {
+        if (ids[i] != 0) {
+            printf("%d\n", ids[i]);
         }
     }
 }
 
 int main() {
-    char str[MAX_LEN];
-    char *tokenArr;
-    char *argumentList[MAX_ARGS];
-    char *command;
-    char currDir[1024];
+    char buf[MAX_LEN];
+    char *tok;
+    char *args[MAX_ARGS];
+    char *cmd;
+    char dir[1024];
     pid_t pid;
-    int execStatus;
-    int status;
+    int st;
     int i;
 
     memset(idList, 0, sizeof(idList));
 
     while (1) {
-        // --- Prompt with color ---
-        if (getcwd(currDir, sizeof(currDir)) != NULL) {
-            printf("\033[0;31m%s$ \033[0m", currDir); // red prompt
+        if (getcwd(dir, sizeof(dir)) != NULL) {
+            printf("\033[0;31m%s$ \033[0m", dir);
         } else {
             printf("prompt$ ");
         }
 
-        // --- Input ---
-        if (fgets(str, MAX_LEN, stdin) == NULL) {
+        if (fgets(buf, MAX_LEN, stdin) == NULL) {
             break;
         }
-        str[strcspn(str, "\n")] = '\0'; // strip newline
+        buf[strcspn(buf, "\n")] = '\0';
 
-        // --- Parse ---
-        tokenArr = strtok(str, " ");
+        tok = strtok(buf, " ");
         i = 0;
-        command = NULL;
-        while (tokenArr != NULL && i < MAX_ARGS - 1) {
+        cmd = NULL;
+        while (tok != NULL && i < MAX_ARGS - 1) {
             if (i == 0) {
-                command = strdup(tokenArr);
+                cmd = strdup(tok);
             }
-            argumentList[i] = strdup(tokenArr);
-            tokenArr = strtok(NULL, " ");
+            args[i] = strdup(tok);
+            tok = strtok(NULL, " ");
             i++;
         }
-        argumentList[i] = NULL;
+        args[i] = NULL;
 
-        if (command == NULL) {
+        if (cmd == NULL) {
             continue;
         }
 
-        // --- Built-ins ---
-        if (strcmp(command, "exit") == 0) {
-            printf("exit\n"); // match project spec
+        if (strcmp(cmd, "exit") == 0) {
+            printf("exit\n");
             break;
         }
-        else if (strcmp(command, "cd") == 0) {
-            if (argumentList[1] != NULL) {
-                chgDir(argumentList[1], currDir);
+        else if (strcmp(cmd, "cd") == 0) {
+            if (args[1] != NULL) {
+                chgDir(args[1], dir);
             } else {
                 printf("Error: cd requires a path\n");
             }
         }
-        else if (strcmp(command, "showpid") == 0) {
+        else if (strcmp(cmd, "showpid") == 0) {
             showpid(idList);
         }
-        // --- External command ---
         else {
             if ((pid = fork()) == 0) {
-                execStatus = execvp(command, argumentList);
-                if (execStatus == -1) {
+                if (execvp(cmd, args) == -1) {
                     printf("Error: Command could not be executed\n");
                     exit(1);
                 }
-            }
-            else {
-                // Save PID in history
-                idList[pidIndex] = pid;
-                pidIndex = (pidIndex + 1) % PID_HISTORY;
-
-                waitpid(pid, &status, 0);
+            } else {
+                idList[idIndex] = pid;
+                idIndex = (idIndex + 1) % 5;
+                waitpid(pid, &st, 0);
             }
         }
-
-        // Free memory
-        for (int j = 0; j < i; j++) {
-            free(argumentList[j]);
-        }
-        free(command);
     }
 
     return 0;
