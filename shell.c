@@ -6,97 +6,110 @@
 
 #define MAX_ARGS 10
 #define MAX_LEN 1000
+#define MAX_PIDS 5
 
-pid_t idList[5];
+// store last 5 child process IDs
+pid_t idList[MAX_PIDS];
 int idIndex = 0;
 
-void chgDir(char *p, char *d) {
-    if (chdir(p) == -1) {
-        printf("Error: cannot change directory\n");
-        return;
+// change directory helper
+void changeDir(char *path) {
+    char cwd[MAX_LEN];
+    if (path == NULL) {
+        // cd with no args → go to HOME
+        char *home = getenv("HOME");
+        if (home == NULL) {
+            fprintf(stderr, "cd: HOME not set\n");
+            return;
+        }
+        if (chdir(home) != 0) {
+            perror("cd");
+            return;
+        }
+    } else {
+        if (chdir(path) != 0) {
+            perror("cd");
+            return;
+        }
     }
-    if (getcwd(d, 1000) == NULL) {
-        perror("getcwd error");
+
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        setenv("PWD", cwd, 1);
     }
-    setenv("PWD", d, 1);
 }
 
-void showpid(pid_t ids[]) {
-    for (int i = 0; i < 5; i++) {
-        if (ids[i] != 0) {
-            printf("%d\n", ids[i]);
+// showpid helper
+void showpid() {
+    for (int i = 0; i < MAX_PIDS; i++) {
+        if (idList[i] != 0) {
+            printf("%d\n", idList[i]);
         }
     }
 }
 
 int main() {
     char buf[MAX_LEN];
-    char *tok;
     char *args[MAX_ARGS];
-    char *cmd;
-    char dir[1024];
+    char cwd[MAX_LEN];
     pid_t pid;
-    int st;
-    int i;
+    int status;
 
     memset(idList, 0, sizeof(idList));
 
     while (1) {
-        if (getcwd(dir, sizeof(dir)) != NULL) {
-            printf("\033[0;31m%s$ \033[0m", dir);
+        // print prompt in red with cwd
+        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+            printf("\033[0;31m%s$ \033[0m", cwd);
         } else {
             printf("prompt$ ");
         }
 
         if (fgets(buf, MAX_LEN, stdin) == NULL) {
-            break;
+            break; // EOF (Ctrl+D)
         }
-        buf[strcspn(buf, "\n")] = '\0';
 
-        tok = strtok(buf, " ");
-        i = 0;
-        cmd = NULL;
+        buf[strcspn(buf, "\n")] = '\0'; // remove newline
+
+        if (strlen(buf) == 0) {
+            continue; // empty input → reprompt
+        }
+
+        // tokenize input
+        int i = 0;
+        char *tok = strtok(buf, " ");
         while (tok != NULL && i < MAX_ARGS - 1) {
-            if (i == 0) {
-                cmd = strdup(tok);
-            }
-            args[i] = strdup(tok);
-            tok = strtok(NULL, " ");
+            args[i] = tok;
             i++;
+            tok = strtok(NULL, " ");
         }
         args[i] = NULL;
 
-        if (cmd == NULL) {
-            continue;
-        }
-
-        if (strcmp(cmd, "exit") == 0) {
+        // built-ins
+        if (strcmp(args[0], "exit") == 0) {
             printf("exit\n");
             break;
-        }
-        else if (strcmp(cmd, "cd") == 0) {
-            if (args[1] != NULL) {
-                chgDir(args[1], dir);
-            } else {
-                printf("Error: cd requires a path\n");
-            }
-        }
-        else if (strcmp(cmd, "showpid") == 0) {
-            showpid(idList);
-        }
-        else {
-            if ((pid = fork()) == 0) {
-                if (execvp(cmd, args) == -1) {
+        } else if (strcmp(args[0], "cd") == 0) {
+            changeDir(args[1]);
+        } else if (strcmp(args[0], "showpid") == 0) {
+            showpid();
+        } else {
+            // external command
+            pid = fork();
+            if (pid == 0) {
+                // child
+                if (execvp(args[0], args) == -1) {
                     printf("Error: Command could not be executed\n");
                     exit(1);
                 }
-            } else {
+            } else if (pid > 0) {
+                // parent
+                waitpid(pid, &status, 0);
                 idList[idIndex] = pid;
-                idIndex = (idIndex + 1) % 5;
-                waitpid(pid, &st, 0);
+                idIndex = (idIndex + 1) % MAX_PIDS;
+            } else {
+                perror("fork failed");
             }
         }
     }
-
     return 0;
 }
