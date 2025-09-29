@@ -12,11 +12,11 @@
 pid_t idList[MAX_PIDS];
 int idIndex = 0;
 
-// change directory helper
+// cd helper
 void changeDir(char *path) {
     char cwd[MAX_LEN];
     if (path == NULL) {
-        // cd with no args → go to HOME
+        // cd with no args go to HOME
         char *home = getenv("HOME");
         if (home == NULL) {
             fprintf(stderr, "cd: HOME not set\n");
@@ -84,7 +84,7 @@ int main() {
         }
         args[i] = NULL;
 
-        // built-ins
+        // built ins
         if (strcmp(args[0], "exit") == 0) {
             printf("exit\n");
             break;
