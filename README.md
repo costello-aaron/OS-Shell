@@ -32,6 +32,7 @@ Run:
 -------------------------------------------
 Challenges Encountered:
 -------------------------------------------
+keeping up with zombie processes and having to check for their existence
 
 
 -------------------------------------------
